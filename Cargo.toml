@@ -1,0 +1,14 @@
+[package]
+name = "baziot"
+description  = "Roaring compressed bitmaps, with a compact serialization format"
+version = "0.1.0"
+authors = ["Sylvain Laperche <sylvain.laperche@gmail.com>"]
+license = "BSD-3-Clause"
+edition = "2021"
+documentation = "https://docs.rs/baziot"
+repository = "https://github.com/grim7reaper/baziot"
+readme = "README.md"
+keywords = ["bitmap", "bitset", "roaring"]
+categories  = ["data-structures"]
+
+[dependencies]

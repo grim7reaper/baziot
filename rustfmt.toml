@@ -1,0 +1,65 @@
+# "Block" style results in smaller diffs and less rightward drift.
+indent_style    = "Block"
+imports_indent  = "Block"
+imports_layout  = "Mixed"
+
+# Line width.
+max_width              = 80   # Who need more than 80 characters?.
+error_on_line_overflow = true # Error if unable to respect max_width
+
+# Comment.
+comment_width      = 80      # Same as max_width.
+wrap_comments      = true    # Break comments to fit on the line.
+normalize_comments = true    # Convert /* */ comments to // comments
+report_todo        = "Never" # Don't report TODO comments.
+report_fixme       = "Never" # Don't report FIXME comments.
+
+# Bracing (same line).
+brace_style         = "SameLineWhere"
+control_brace_style = "AlwaysSameLine"
+
+# Alphabetical ordering FTW.
+reorder_imports = true
+
+# Horizontal spacing.
+space_after_colon                 = true   # One space after a colon.
+space_before_colon                = false  # No space before a colon.
+type_punctuation_density          = "Wide" # Spaces around + and = in types.
+spaces_around_ranges              = false  # No spaces within empty ()/[].
+
+# Vertical spacing.
+blank_lines_lower_bound = 0 # No minimum required.
+blank_lines_upper_bound = 1 # One line maximum.
+
+# Structure.
+struct_lit_single_line = true    # Keep small struct literals on a single line.
+struct_field_align_threshold = 0 # Don't align structures fields.
+
+# Blocks (always use for multiline).
+match_arm_blocks       = true
+force_multiline_blocks = true
+
+# Trailing comma/semicolon.
+trailing_semicolon         = true       # Add after break, continue and return.
+trailing_comma             = "Vertical" # Add only in vertical lists.
+match_block_trailing_comma = true       # Always add a trailing comma.
+
+# Tab characters.
+tab_spaces = 4     # A tab character is four spaces.
+hard_tabs  = false # Don't use tab characters for indentation.
+
+# Misc.
+newline_style      = "Unix"     # Only use Unix line endings.
+format_strings     = false      # Manual split for long strings.
+fn_single_line     = false      # No special case for single line functions.
+binop_separator    = "Front"    # When split, put binary operators in front.
+use_try_shorthand  = true       # Replace try! macro by ? shorthand.
+merge_derives      = true       # Merge multiple derives into a single one.
+force_explicit_abi = true       # Always print the abi for extern items.
+condense_wildcard_suffixes = true # Use .. instead of several _ in tuple.
+
+# No strong opinion on these ones: just use the defaults.
+color                  = "Auto"
+combine_control_expr   = true
+empty_item_single_line = true
+where_single_line      = false
