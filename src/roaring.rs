@@ -1,0 +1,168 @@
+use crate::chunk::Chunk;
+
+/// Compressed bitmap for 32-bit integers.
+#[derive(Default)]
+pub struct Roaring {
+    /// Bitmap chunks, indexed by the 16 most significant bits of the integer.
+    chunks: Vec<Chunk>,
+}
+
+impl Roaring {
+    /// Create an empty bitmap.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Adds a value to the bitmap.
+    ///
+    /// If the bitmap did not have this value present, true is returned.
+    /// If the bitmap did have this value present, false is returned.
+    pub fn insert(&mut self, value: u32) -> bool {
+        let entry = Entry::from(value);
+
+        match self.chunks.binary_search_by_key(&entry.hi, Chunk::key) {
+            Ok(index) => self.chunks[index].insert(entry.lo),
+            Err(index) => {
+                self.chunks.insert(index, Chunk::new(&entry));
+                true
+            },
+        }
+    }
+
+    /// Removes a value from the bitmap.
+    ///
+    /// Returns whether the value was present or not.
+    pub fn remove(&mut self, value: u32) -> bool {
+        let entry = Entry::from(value);
+
+        self.chunks
+            .binary_search_by_key(&entry.hi, Chunk::key)
+            .map(|index| {
+                let old_cardinality = self.chunks[index].cardinality();
+                let removed = self.chunks[index].remove(entry.lo);
+
+                // Chunk is now empty (last element removed), delete it.
+                if old_cardinality == 1 && removed {
+                    self.chunks.remove(index);
+                }
+                removed
+            })
+            .unwrap_or(false)
+    }
+
+    /// Computes the bitmap cardinality.
+    pub fn cardinality(&self) -> usize {
+        self.chunks
+            .iter()
+            .fold(0, |acc, chunk| acc + chunk.cardinality())
+    }
+
+    /// Finds the smallest value in the bitmap.
+    pub fn min(&self) -> Option<u32> {
+        self.chunks.iter().filter_map(Chunk::min).min()
+    }
+
+    /// Finds the largest value in the bitmap.
+    pub fn max(&self) -> Option<u32> {
+        self.chunks.iter().filter_map(Chunk::max).max()
+    }
+}
+
+/// Roaring bitmap entry.
+pub(super) struct Entry {
+    /// Most significant bits.
+    pub(super) hi: u16,
+    /// Least significant bits.
+    pub(super) lo: u16,
+}
+
+impl Entry {
+    pub(super) fn from_parts(hi: u16, lo: u16) -> Self {
+        Self { hi, lo }
+    }
+}
+
+impl From<u32> for Entry {
+    #[allow(clippy::cast_possible_truncation)] // We truncate on purpose here.
+    fn from(value: u32) -> Self {
+        Self::from_parts((value >> 16) as u16, (value & 0xFFFF) as u16)
+    }
+}
+
+impl From<Entry> for u32 {
+    fn from(entry: Entry) -> Self {
+        u32::from(entry.hi) << 16 | u32::from(entry.lo)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn entry() {
+        let value = 0x0000_0000;
+        let entry = Entry::from(value);
+        assert_eq!(entry.hi, 0x0000);
+        assert_eq!(entry.lo, 0x0000);
+        assert_eq!(u32::from(entry), value);
+
+        let value = 0x0000_0001;
+        let entry = Entry::from(value);
+        assert_eq!(entry.hi, 0x0000);
+        assert_eq!(entry.lo, 0x0001);
+        assert_eq!(u32::from(entry), value);
+
+        let value = 0x0000_1000;
+        let entry = Entry::from(value);
+        assert_eq!(entry.hi, 0x0000);
+        assert_eq!(entry.lo, 0x1000);
+        assert_eq!(u32::from(entry), value);
+
+        let value = 0x0001_0000;
+        let entry = Entry::from(value);
+        assert_eq!(entry.hi, 0x0001);
+        assert_eq!(entry.lo, 0x0000);
+        assert_eq!(u32::from(entry), value);
+
+        let value = 0x1000_0000;
+        let entry = Entry::from(value);
+        assert_eq!(entry.hi, 0x1000);
+        assert_eq!(entry.lo, 0x0000);
+        assert_eq!(u32::from(entry), value);
+
+        let value = 0xDEAD_BEEF;
+        let entry = Entry::from(value);
+        assert_eq!(entry.hi, 0xDEAD);
+        assert_eq!(entry.lo, 0xBEEF);
+        assert_eq!(u32::from(entry), value);
+    }
+
+    #[test]
+    fn insertion_deletion() {
+        let mut bitmap = Roaring::new();
+        assert_eq!(bitmap.cardinality(), 0);
+        assert_eq!(bitmap.min(), None);
+        assert_eq!(bitmap.max(), None);
+        // No allocation for empty bitmap.
+        assert_eq!(bitmap.chunks.len(), 0);
+
+        // Chunks are created as needed.
+        bitmap.insert(1538809352);
+        bitmap.insert(1538809350);
+        assert_eq!(bitmap.cardinality(), 2);
+        assert_eq!(bitmap.chunks.len(), 1);
+        bitmap.insert(370099062);
+        assert_eq!(bitmap.cardinality(), 3);
+        assert_eq!(bitmap.chunks.len(), 2);
+
+        // Operation works accross chunks.
+        assert_eq!(bitmap.min(), Some(370099062));
+        assert_eq!(bitmap.max(), Some(1538809352));
+
+        // Chunks are deleted when empty.
+        bitmap.remove(370099062);
+        assert_eq!(bitmap.cardinality(), 2);
+        assert_eq!(bitmap.chunks.len(), 1);
+    }
+}
