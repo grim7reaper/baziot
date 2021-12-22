@@ -96,6 +96,9 @@ mod tests {
 
         array.insert(11);
         assert_eq!(array.contains(11), true);
+
+        array.remove(11);
+        assert_eq!(array.contains(11), false);
     }
 
     #[test]

@@ -149,6 +149,9 @@ mod tests {
 
         chunk.insert(11);
         assert_eq!(chunk.contains(11), true);
+
+        chunk.remove(11);
+        assert_eq!(chunk.contains(11), false);
     }
 
     #[test]

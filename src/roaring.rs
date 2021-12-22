@@ -183,6 +183,9 @@ mod tests {
 
         bitmap.insert(42);
         assert_eq!(bitmap.contains(42), true);
+
+        bitmap.remove(42);
+        assert_eq!(bitmap.contains(42), false);
     }
 
     #[test]
