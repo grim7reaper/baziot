@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn missing() {
-        let entry = Entry::from(42);
+        let entry = Entry::from_parts(0, 42);
         let mut chunk = Chunk::new(&entry);
 
         assert_eq!(chunk.remove(42), true, "found");
