@@ -184,4 +184,22 @@ mod tests {
         bitmap.insert(42);
         assert_eq!(bitmap.contains(42), true);
     }
+
+    #[test]
+    fn already_exists() {
+        let mut bitmap = Roaring::new();
+
+        assert_eq!(bitmap.insert(42), true, "new entry");
+        assert_eq!(bitmap.insert(42), false, "already exists");
+    }
+
+    #[test]
+    fn missing() {
+        let mut bitmap = Roaring::new();
+
+        bitmap.insert(11);
+
+        assert_eq!(bitmap.remove(11), true, "found");
+        assert_eq!(bitmap.remove(11), false, "missing entry");
+    }
 }
