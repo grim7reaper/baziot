@@ -229,20 +229,20 @@ mod tests {
     }
 
     #[test]
-    fn already_exists() {
-        let mut bitmap = Bitmap::new();
-
-        assert_eq!(bitmap.insert(42), true, "new entry");
-        assert_eq!(bitmap.insert(42), false, "already exists");
-    }
-
-    #[test]
     fn contains() {
         let mut bitmap = Bitmap::new();
         assert_eq!(bitmap.contains(42), false);
 
         bitmap.insert(42);
         assert_eq!(bitmap.contains(42), true);
+    }
+
+    #[test]
+    fn already_exists() {
+        let mut bitmap = Bitmap::new();
+
+        assert_eq!(bitmap.insert(42), true, "new entry");
+        assert_eq!(bitmap.insert(42), false, "already exists");
     }
 
     #[test]
