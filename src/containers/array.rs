@@ -31,6 +31,11 @@ impl Array {
             .is_ok()
     }
 
+    /// Returns true if the array contains the value.
+    pub(crate) fn contains(&self, value: u16) -> bool {
+        self.0.binary_search(&value).is_ok()
+    }
+
     /// Finds the smallest value in the array.
     pub(crate) fn min(&self) -> Option<u16> {
         self.0.first().copied()
@@ -82,6 +87,15 @@ mod tests {
         array.remove(100);
         array.remove(42);
         assert!(array.is_sorted(), "remove preserve ordering");
+    }
+
+    #[test]
+    fn contains() {
+        let mut array = Array::new(42);
+        assert_eq!(array.contains(11), false);
+
+        array.insert(11);
+        assert_eq!(array.contains(11), true);
     }
 
     #[test]

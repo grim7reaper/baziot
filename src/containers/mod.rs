@@ -39,6 +39,14 @@ impl Container {
         }
     }
 
+    /// Returns true if the container contains the value.
+    pub(crate) fn contains(&self, value: u16) -> bool {
+        match *self {
+            Container::Array(ref array) => array.contains(value),
+            Container::Bitmap(ref bitmap) => bitmap.contains(value),
+        }
+    }
+
     /// Finds the smallest value in the container.
     pub(crate) fn min(&self) -> Option<u16> {
         match *self {

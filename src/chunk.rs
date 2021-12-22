@@ -51,6 +51,11 @@ impl Chunk {
         removed
     }
 
+    /// Returns true if the chunk contains the value.
+    pub(crate) fn contains(&self, value: u16) -> bool {
+        self.container.contains(value)
+    }
+
     /// Returns the chunk key.
     pub(crate) fn key(&self) -> u16 {
         self.key
@@ -126,6 +131,7 @@ mod tests {
         // Original data (min) and new ones (max) are both here.
         assert_eq!(chunk.min(), Some(0));
         assert_eq!(chunk.max(), Some(8888));
+        assert!(chunk.contains(4242));
 
         // Move values back into an array when the density is below the
         // threshold.
@@ -133,6 +139,16 @@ mod tests {
         chunk.remove(1000);
         assert!(chunk.cardinality() <= SPARSE_CHUNK_THRESHOLD);
         assert!(matches!(chunk.container, Container::Array(_)));
+    }
+
+    #[test]
+    fn contains() {
+        let entry = Entry::from_parts(0, 42);
+        let mut chunk = Chunk::new(&entry);
+        assert_eq!(chunk.contains(11), false);
+
+        chunk.insert(11);
+        assert_eq!(chunk.contains(11), true);
     }
 
     #[test]

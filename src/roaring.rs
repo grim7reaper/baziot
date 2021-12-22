@@ -50,6 +50,16 @@ impl Roaring {
             .unwrap_or(false)
     }
 
+    /// Returns true if the bitmap contains the value.
+    pub fn contains(&self, value: u32) -> bool {
+        let entry = Entry::from(value);
+
+        self.chunks
+            .binary_search_by_key(&entry.hi, Chunk::key)
+            .map(|index| self.chunks[index].contains(entry.lo))
+            .unwrap_or(false)
+    }
+
     /// Computes the bitmap cardinality.
     pub fn cardinality(&self) -> usize {
         self.chunks
@@ -164,5 +174,14 @@ mod tests {
         bitmap.remove(370099062);
         assert_eq!(bitmap.cardinality(), 2);
         assert_eq!(bitmap.chunks.len(), 1);
+    }
+
+    #[test]
+    fn contains() {
+        let mut bitmap = Roaring::new();
+        assert_eq!(bitmap.contains(42), false);
+
+        bitmap.insert(42);
+        assert_eq!(bitmap.contains(42), true);
     }
 }

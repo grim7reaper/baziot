@@ -38,6 +38,11 @@ impl Bitmap {
         exists
     }
 
+    /// Returns true if the bitmap contains the value.
+    pub(crate) fn contains(&self, value: u16) -> bool {
+        self.tst(&value.into())
+    }
+
     /// Finds the smallest value in the bitmap.
     // Max index is BITMAP_WORD_COUNT/max trailing zeros is 64: no truncation.
     #[allow(clippy::cast_possible_truncation)]
@@ -229,6 +234,15 @@ mod tests {
 
         assert_eq!(bitmap.insert(42), true, "new entry");
         assert_eq!(bitmap.insert(42), false, "already exists");
+    }
+
+    #[test]
+    fn contains() {
+        let mut bitmap = Bitmap::new();
+        assert_eq!(bitmap.contains(42), false);
+
+        bitmap.insert(42);
+        assert_eq!(bitmap.contains(42), true);
     }
 
     #[test]
