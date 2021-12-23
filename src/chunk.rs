@@ -3,7 +3,7 @@ use crate::{containers::Container, roaring::Entry};
 // Number of elements that defines the limit between a sparse and dense chunk.
 const SPARSE_CHUNK_THRESHOLD: usize = 4_096;
 
-/// Chunks of 2^16 integers, using containers adapted to the density.
+/// Chunks of 2¹⁶ integers, using containers adapted to the density.
 pub(crate) struct Chunk {
     /// The 16 most significant bits.
     key: u16,
