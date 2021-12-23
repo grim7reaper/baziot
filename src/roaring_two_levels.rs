@@ -93,7 +93,7 @@ impl RoaringTwoLevels {
     }
 }
 
-/// Roaring bitmap entry.
+/// `RoaringTwoLevels` bitmap entry.
 pub(super) struct Entry {
     /// Most significant bits (48).
     pub(super) hi: u64,

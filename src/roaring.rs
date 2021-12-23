@@ -93,7 +93,7 @@ impl Roaring {
     }
 }
 
-/// Roaring bitmap entry.
+/// `Roaring` bitmap entry.
 pub(super) struct Entry {
     /// Most significant bits.
     pub(super) hi: u16,
