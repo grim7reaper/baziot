@@ -1,10 +1,10 @@
-use crate::chunk::Chunk;
+use crate::chunk::{self, Chunk};
 
 /// Compressed bitmap for 32-bit integers.
 #[derive(Default)]
 pub struct Roaring {
     /// Bitmap chunks, indexed by the 16 most significant bits of the integer.
-    chunks: Vec<Chunk>,
+    chunks: Vec<Chunk<Header>>,
 }
 
 impl Roaring {
@@ -23,7 +23,8 @@ impl Roaring {
         match self.chunks.binary_search_by_key(&entry.hi, Chunk::key) {
             Ok(index) => self.chunks[index].insert(entry.lo),
             Err(index) => {
-                self.chunks.insert(index, Chunk::new(&entry));
+                let header = Header::new(entry.hi);
+                self.chunks.insert(index, Chunk::new(header, entry.lo));
                 true
             },
         }
@@ -116,6 +117,47 @@ impl From<u32> for Entry {
 impl From<Entry> for u32 {
     fn from(entry: Entry) -> Self {
         u32::from(entry.hi) << 16 | u32::from(entry.lo)
+    }
+}
+
+/// Chunk header.
+pub(super) struct Header {
+    /// The 16 most significant bits.
+    key: u16,
+    /// Chunk's cardinality minus one.
+    ///
+    /// -1 allows to count up to 65536 while staying on 16-bit, and it's
+    /// safe because the minimum size is 1 (empty chunks are deallocated).
+    cardinality: u16,
+}
+
+impl Header {
+    /// Initializes a new Chunk's header.
+    pub(super) fn new(key: u16) -> Self {
+        Self {
+            key,
+            cardinality: 0,
+        }
+    }
+}
+
+impl chunk::Header for Header {
+    type Key = u16;
+
+    fn key(&self) -> Self::Key {
+        self.key
+    }
+
+    fn cardinality(&self) -> usize {
+        usize::from(self.cardinality) + 1
+    }
+
+    fn increase_cardinality(&mut self) {
+        self.cardinality += 1;
+    }
+
+    fn decrease_cardinality(&mut self) {
+        self.cardinality = self.cardinality.saturating_sub(1);
     }
 }
 

@@ -1,28 +1,37 @@
-use crate::{containers::Container, roaring::Entry};
+use crate::containers::Container;
 
 // Number of elements that defines the limit between a sparse and dense chunk.
 const SPARSE_CHUNK_THRESHOLD: usize = 4_096;
 
+/// A chunk header, providing key and cardinality handling.
+pub(crate) trait Header {
+    type Key;
+
+    /// Returns the chunk's key.
+    fn key(&self) -> Self::Key;
+    /// Returns the chunk's cardinality.
+    fn cardinality(&self) -> usize;
+
+    /// Increases by 1 the chunk's cardinality.
+    fn increase_cardinality(&mut self);
+    /// Decreases by 1 the chunk's cardinality.
+    fn decrease_cardinality(&mut self);
+}
+
 /// Chunks of 2¹⁶ integers, using containers adapted to the density.
-pub(crate) struct Chunk {
-    /// The 16 most significant bits.
-    key: u16,
-    /// Chunk's cardinality minus one.
-    ///
-    /// -1 allows to count up to 65536 while staying on 16-bit, and it's safe
-    /// because the minimum size is 1 (empty chunks are deallocated).
-    cardinality: u16,
+pub(crate) struct Chunk<H> {
+    /// Chunk header, holding the chunk's key and cardinality.
+    header: H,
     /// The 16 least significant bits.
     container: Container,
 }
 
-impl Chunk {
+impl<H: Header> Chunk<H> {
     /// Initializes a new chunk with the given value.
-    pub(crate) fn new(entry: &Entry) -> Self {
+    pub(crate) fn new(header: H, value: u16) -> Self {
         Self {
-            key: entry.hi,
-            cardinality: 0,
-            container: Container::new(entry.lo),
+            header,
+            container: Container::new(value),
         }
     }
 
@@ -33,7 +42,7 @@ impl Chunk {
     pub(crate) fn insert(&mut self, value: u16) -> bool {
         let added = self.container.insert(value);
         if added {
-            self.cardinality += 1;
+            self.header.increase_cardinality();
             self.optimize_container();
         }
         added
@@ -45,7 +54,7 @@ impl Chunk {
     pub(crate) fn remove(&mut self, value: u16) -> bool {
         let removed = self.container.remove(value);
         if removed {
-            self.cardinality = self.cardinality.saturating_sub(1);
+            self.header.decrease_cardinality();
             self.optimize_container();
         }
         removed
@@ -57,13 +66,13 @@ impl Chunk {
     }
 
     /// Returns the chunk key.
-    pub(crate) fn key(&self) -> u16 {
-        self.key
+    pub(crate) fn key(&self) -> H::Key {
+        self.header.key()
     }
 
     /// Returns the chunk cardinality.
     pub(crate) fn cardinality(&self) -> usize {
-        usize::from(self.cardinality) + 1
+        self.header.cardinality()
     }
 
     /// Finds the smallest value in the chunk.
@@ -101,11 +110,12 @@ impl Chunk {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::roaring::Header;
 
     #[test]
     fn insertion_deletion() {
-        let entry = Entry::from_parts(0, 0);
-        let mut chunk = Chunk::new(&entry);
+        let header = Header::new(0);
+        let mut chunk = Chunk::new(header, 0);
 
         // Chunks start with an array container.
         assert!(matches!(chunk.container, Container::Array(_)));
@@ -139,8 +149,8 @@ mod tests {
 
     #[test]
     fn contains() {
-        let entry = Entry::from_parts(0, 42);
-        let mut chunk = Chunk::new(&entry);
+        let header = Header::new(0);
+        let mut chunk = Chunk::new(header, 42);
         assert_eq!(chunk.contains(11), false);
 
         chunk.insert(11);
@@ -152,8 +162,8 @@ mod tests {
 
     #[test]
     fn already_exists() {
-        let entry = Entry::from_parts(0, 42);
-        let mut chunk = Chunk::new(&entry);
+        let header = Header::new(0);
+        let mut chunk = Chunk::new(header, 42);
 
         assert_eq!(chunk.insert(42), false, "already exists");
         assert_eq!(chunk.cardinality(), 1);
@@ -164,8 +174,8 @@ mod tests {
 
     #[test]
     fn missing() {
-        let entry = Entry::from_parts(0, 42);
-        let mut chunk = Chunk::new(&entry);
+        let header = Header::new(0);
+        let mut chunk = Chunk::new(header, 42);
 
         assert_eq!(chunk.remove(42), true, "found");
         assert_eq!(chunk.remove(11), false, "missing entry");
@@ -173,8 +183,8 @@ mod tests {
 
     #[test]
     fn min_max() {
-        let entry = Entry::from_parts(0, 42);
-        let mut chunk = Chunk::new(&entry);
+        let header = Header::new(0);
+        let mut chunk = Chunk::new(header, 42);
         assert_eq!(chunk.min(), Some(42));
         assert_eq!(chunk.max(), Some(42));
 
