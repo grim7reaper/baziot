@@ -14,7 +14,7 @@ impl Array {
     ///
     /// If the array did not have this value present, true is returned.
     /// If the array did have this value present, false is returned.
-    pub(crate) fn insert(&mut self, value: u16) -> bool {
+    pub(super) fn insert(&mut self, value: u16) -> bool {
         self.0
             .binary_search(&value)
             .map_err(|index| self.0.insert(index, value))
@@ -24,7 +24,7 @@ impl Array {
     /// Removes a value from the array.
     ///
     /// Returns whether the value was present or not.
-    pub(crate) fn remove(&mut self, value: u16) -> bool {
+    pub(super) fn remove(&mut self, value: u16) -> bool {
         self.0
             .binary_search(&value)
             .map(|index| self.0.remove(index))
@@ -32,17 +32,17 @@ impl Array {
     }
 
     /// Returns true if the array contains the value.
-    pub(crate) fn contains(&self, value: u16) -> bool {
+    pub(super) fn contains(&self, value: u16) -> bool {
         self.0.binary_search(&value).is_ok()
     }
 
     /// Finds the smallest value in the array.
-    pub(crate) fn min(&self) -> Option<u16> {
+    pub(super) fn min(&self) -> Option<u16> {
         self.0.first().copied()
     }
 
     /// Finds the largest value in the array.
-    pub(crate) fn max(&self) -> Option<u16> {
+    pub(super) fn max(&self) -> Option<u16> {
         self.0.last().copied()
     }
 

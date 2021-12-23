@@ -17,7 +17,7 @@ impl Bitmap {
     ///
     /// If the bitmap did not have this value present, true is returned.
     /// If the bitmap did have this value present, false is returned.
-    pub(crate) fn insert(&mut self, value: u16) -> bool {
+    pub(super) fn insert(&mut self, value: u16) -> bool {
         let index = value.into();
         let exists = self.tst(&index);
 
@@ -29,7 +29,7 @@ impl Bitmap {
     /// Removes a value from the bitmap.
     ///
     /// Returns whether the value was present or not.
-    pub(crate) fn remove(&mut self, value: u16) -> bool {
+    pub(super) fn remove(&mut self, value: u16) -> bool {
         let index = value.into();
         let exists = self.tst(&index);
 
@@ -39,14 +39,14 @@ impl Bitmap {
     }
 
     /// Returns true if the bitmap contains the value.
-    pub(crate) fn contains(&self, value: u16) -> bool {
+    pub(super) fn contains(&self, value: u16) -> bool {
         self.tst(&value.into())
     }
 
     /// Finds the smallest value in the bitmap.
     // Max index is BITMAP_WORD_COUNT/max trailing zeros is 64: no truncation.
     #[allow(clippy::cast_possible_truncation)]
-    pub(crate) fn min(&self) -> Option<u16> {
+    pub(super) fn min(&self) -> Option<u16> {
         self.0.iter().enumerate().find(|&(_, word)| *word != 0).map(
             |(index, bit)| {
                 let tail = (index as u16) * 64;
@@ -60,7 +60,7 @@ impl Bitmap {
     /// Finds the largest value in the bitmap.
     // Max index is BITMAP_WORD_COUNT/max leading zeros is 64: no truncation.
     #[allow(clippy::cast_possible_truncation)]
-    pub(crate) fn max(&self) -> Option<u16> {
+    pub(super) fn max(&self) -> Option<u16> {
         self.0
             .iter()
             .enumerate()

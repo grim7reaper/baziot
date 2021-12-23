@@ -4,7 +4,7 @@ use crate::containers::Container;
 const SPARSE_CHUNK_THRESHOLD: usize = 4_096;
 
 /// A chunk header, providing key and cardinality handling.
-pub(crate) trait Header {
+pub(super) trait Header {
     type Key;
 
     /// Returns the chunk's key.
@@ -19,7 +19,7 @@ pub(crate) trait Header {
 }
 
 /// Chunks of 2¹⁶ integers, using containers adapted to the density.
-pub(crate) struct Chunk<H> {
+pub(super) struct Chunk<H> {
     /// Chunk header, holding the chunk's key and cardinality.
     header: H,
     /// The 16 least significant bits.
@@ -28,7 +28,7 @@ pub(crate) struct Chunk<H> {
 
 impl<H: Header> Chunk<H> {
     /// Initializes a new chunk with the given value.
-    pub(crate) fn new(header: H, value: u16) -> Self {
+    pub(super) fn new(header: H, value: u16) -> Self {
         Self {
             header,
             container: Container::new(value),
@@ -39,7 +39,7 @@ impl<H: Header> Chunk<H> {
     ///
     /// If the chunk did not have this value present, true is returned.
     /// If the chunk did have this value present, false is returned.
-    pub(crate) fn insert(&mut self, value: u16) -> bool {
+    pub(super) fn insert(&mut self, value: u16) -> bool {
         let added = self.container.insert(value);
         if added {
             self.header.increase_cardinality();
@@ -51,7 +51,7 @@ impl<H: Header> Chunk<H> {
     /// Removes a value from the chunk.
     ///
     /// Returns whether the value was present or not.
-    pub(crate) fn remove(&mut self, value: u16) -> bool {
+    pub(super) fn remove(&mut self, value: u16) -> bool {
         let removed = self.container.remove(value);
         if removed {
             self.header.decrease_cardinality();
@@ -61,27 +61,27 @@ impl<H: Header> Chunk<H> {
     }
 
     /// Returns true if the chunk contains the value.
-    pub(crate) fn contains(&self, value: u16) -> bool {
+    pub(super) fn contains(&self, value: u16) -> bool {
         self.container.contains(value)
     }
 
     /// Returns the chunk key.
-    pub(crate) fn key(&self) -> H::Key {
+    pub(super) fn key(&self) -> H::Key {
         self.header.key()
     }
 
     /// Returns the chunk cardinality.
-    pub(crate) fn cardinality(&self) -> usize {
+    pub(super) fn cardinality(&self) -> usize {
         self.header.cardinality()
     }
 
     /// Finds the smallest value in the chunk.
-    pub(crate) fn min(&self) -> Option<u16> {
+    pub(super) fn min(&self) -> Option<u16> {
         self.container.min()
     }
 
     /// Finds the largest value in the chunk.
-    pub(crate) fn max(&self) -> Option<u16> {
+    pub(super) fn max(&self) -> Option<u16> {
         self.container.max()
     }
 
