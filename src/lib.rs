@@ -51,6 +51,8 @@ mod chunk;
 mod containers;
 mod roaring;
 mod roaring_tree_map;
+mod roaring_two_levels;
 
 pub use roaring::Roaring;
 pub use roaring_tree_map::RoaringTreeMap;
+pub use roaring_two_levels::RoaringTwoLevels;
