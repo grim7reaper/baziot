@@ -166,12 +166,12 @@ impl chunk::Header for Header {
 
     fn increase_cardinality(&mut self) {
         let cardinality = self.unpack_cardinality() + 1;
-        self.pack_cardinality(cardinality)
+        self.pack_cardinality(cardinality);
     }
 
     fn decrease_cardinality(&mut self) {
         let cardinality = self.unpack_cardinality().saturating_sub(1);
-        self.pack_cardinality(cardinality)
+        self.pack_cardinality(cardinality);
     }
 }
 
