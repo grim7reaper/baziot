@@ -67,17 +67,13 @@ impl Chunk {
     }
 
     /// Finds the smallest value in the chunk.
-    pub(crate) fn min(&self) -> Option<u32> {
-        self.container
-            .min()
-            .map(|lo| Entry::from_parts(self.key, lo).into())
+    pub(crate) fn min(&self) -> Option<u16> {
+        self.container.min()
     }
 
     /// Finds the largest value in the chunk.
-    pub(crate) fn max(&self) -> Option<u32> {
-        self.container
-            .max()
-            .map(|lo| Entry::from_parts(self.key, lo).into())
+    pub(crate) fn max(&self) -> Option<u16> {
+        self.container.max()
     }
 
     /// Ensures that the container is adapted to the chunk's cardinality.

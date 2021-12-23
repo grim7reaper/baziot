@@ -69,12 +69,26 @@ impl Roaring {
 
     /// Finds the smallest value in the bitmap.
     pub fn min(&self) -> Option<u32> {
-        self.chunks.iter().filter_map(Chunk::min).min()
+        self.chunks
+            .iter()
+            .filter_map(|chunk| {
+                chunk
+                    .min()
+                    .map(|min| Entry::from_parts(chunk.key(), min).into())
+            })
+            .min()
     }
 
     /// Finds the largest value in the bitmap.
     pub fn max(&self) -> Option<u32> {
-        self.chunks.iter().filter_map(Chunk::max).max()
+        self.chunks
+            .iter()
+            .filter_map(|chunk| {
+                chunk
+                    .max()
+                    .map(|max| Entry::from_parts(chunk.key(), max).into())
+            })
+            .max()
     }
 }
 
