@@ -46,6 +46,10 @@ jobs:
           crate: rust-covfix
           version: 0.2.1
           use-tool-cache: true
+      - name: Setup testspace client
+        uses: testspace-com/setup-testspace@v1
+        with:
+          domain: ${{github.repository_owner}}
       - name: Generate test result and coverage report
         run: |
           cargo test -- -Z unstable-options --format json --report-time | cargo2junit > results.xml;
@@ -57,6 +61,8 @@ jobs:
         if: always()
         with:
           files: results.xml
+      - name: Publish Results to Testspace
+        run: testspace ./results.xml
       - name: Upload to Codecov
         uses: codecov/codecov-action@v2
         with:
