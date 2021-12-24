@@ -1,0 +1,64 @@
+on: [pull_request, push]
+
+name: Test
+
+jobs:
+  test:
+    name: Test
+    env:
+      PROJECT_NAME: "baziot"
+      RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off"
+      CARGO_INCREMENTAL: 0
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-cache-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install cargo2junit
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo2junit
+          version: 0.1.9
+          use-tool-cache: true
+      - name: Install grcov
+        uses: actions-rs/install@v0.1
+        with:
+          crate: grcov
+          version: 0.8.4
+          use-tool-cache: true
+      - name: Install rust-covfix
+        uses: actions-rs/install@v0.1
+        with:
+          crate: rust-covfix
+          version: 0.2.1
+          use-tool-cache: true
+      - name: Generate test result and coverage report
+        run: |
+          cargo test -- -Z unstable-options --format json --report-time | cargo2junit > results.xml;
+          zip -0 cov.zip $(find . -name "$PROJECT_NAME*.gc*" -print);
+          grcov cov.zip -s . -t lcov --llvm --ignore-not-existing --ignore "/*" -o lcov.info;
+          rust-covfix -o lcov-fixed.info lcov.info
+      - name: Upload test results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: results.xml
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          files: ./lcov-fixed.info
+          fail_ci_if_error: true
