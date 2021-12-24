@@ -91,6 +91,16 @@ impl RoaringTwoLevels {
             })
             .max()
     }
+
+    /// Clears the bitmap, removing all values.
+    pub fn clear(&mut self) {
+        self.chunks.clear();
+    }
+
+    /// Returns true if the bitmap contains no elements.
+    pub fn is_empty(&self) -> bool {
+        self.chunks.is_empty()
+    }
 }
 
 /// `RoaringTwoLevels` bitmap entry.
@@ -291,5 +301,19 @@ mod tests {
 
         assert_eq!(bitmap.remove(11), true, "found");
         assert_eq!(bitmap.remove(11), false, "missing entry");
+    }
+
+    #[test]
+    fn is_empty() {
+        let mut bitmap = RoaringTwoLevels::new();
+        assert_eq!(bitmap.is_empty(), true);
+
+        bitmap.insert(250070690292783730);
+        bitmap.insert(250070690272783732);
+        bitmap.insert(188740018811086);
+        assert_eq!(bitmap.is_empty(), false);
+
+        bitmap.clear();
+        assert_eq!(bitmap.is_empty(), true);
     }
 }

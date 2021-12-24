@@ -91,6 +91,16 @@ impl Roaring {
             })
             .max()
     }
+
+    /// Clears the bitmap, removing all values.
+    pub fn clear(&mut self) {
+        self.chunks.clear();
+    }
+
+    /// Returns true if the bitmap contains no elements.
+    pub fn is_empty(&self) -> bool {
+        self.chunks.is_empty()
+    }
 }
 
 /// `Roaring` bitmap entry.
@@ -260,5 +270,19 @@ mod tests {
 
         assert_eq!(bitmap.remove(11), true, "found");
         assert_eq!(bitmap.remove(11), false, "missing entry");
+    }
+
+    #[test]
+    fn is_empty() {
+        let mut bitmap = Roaring::new();
+        assert_eq!(bitmap.is_empty(), true);
+
+        bitmap.insert(1538809352);
+        bitmap.insert(1538809350);
+        bitmap.insert(370099062);
+        assert_eq!(bitmap.is_empty(), false);
+
+        bitmap.clear();
+        assert_eq!(bitmap.is_empty(), true);
     }
 }

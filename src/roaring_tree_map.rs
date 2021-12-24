@@ -42,7 +42,7 @@ impl RoaringTreeMap {
                 let removed = slot.get_mut().remove(entry.lo);
 
                 // Remove unused bitmap.
-                if removed && slot.get().cardinality() == 0 {
+                if slot.get().is_empty() {
                     slot.remove();
                 }
                 removed
@@ -81,6 +81,16 @@ impl RoaringTreeMap {
         self.bitmaps.iter().last().and_then(|(key, bitmap)| {
             bitmap.max().map(|max| Entry::from_parts(*key, max).into())
         })
+    }
+
+    /// Clears the bitmap, removing all values.
+    pub fn clear(&mut self) {
+        self.bitmaps.clear();
+    }
+
+    /// Returns true if the bitmap contains no elements.
+    pub fn is_empty(&self) -> bool {
+        self.bitmaps.is_empty()
     }
 }
 
@@ -210,5 +220,19 @@ mod tests {
 
         assert_eq!(bitmap.remove(11), true, "found");
         assert_eq!(bitmap.remove(11), false, "missing entry");
+    }
+
+    #[test]
+    fn is_empty() {
+        let mut bitmap = RoaringTreeMap::new();
+        assert_eq!(bitmap.is_empty(), true);
+
+        bitmap.insert(250070690292783730);
+        bitmap.insert(250070690272783732);
+        bitmap.insert(188740018811086);
+        assert_eq!(bitmap.is_empty(), false);
+
+        bitmap.clear();
+        assert_eq!(bitmap.is_empty(), true);
     }
 }
