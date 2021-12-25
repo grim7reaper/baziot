@@ -1,4 +1,4 @@
-use crate::containers::Container;
+use crate::containers::{self, Container};
 
 // Number of elements that defines the limit between a sparse and dense chunk.
 const SPARSE_CHUNK_THRESHOLD: usize = 4_096;
@@ -25,6 +25,8 @@ pub(super) struct Chunk<H> {
     /// The 16 least significant bits.
     container: Container,
 }
+
+pub(super) type Iter<'a> = containers::Iter<'a>;
 
 impl<H: Header> Chunk<H> {
     /// Initializes a new chunk with the given value.
@@ -83,6 +85,12 @@ impl<H: Header> Chunk<H> {
     /// Finds the largest value in the chunk.
     pub(super) fn max(&self) -> Option<u16> {
         self.container.max()
+    }
+
+    /// Gets an iterator that visits the values in the chunk in ascending
+    /// order.
+    pub(super) fn iter(&self) -> Iter<'_> {
+        self.container.iter()
     }
 
     /// Ensures that the container is adapted to the chunk's cardinality.

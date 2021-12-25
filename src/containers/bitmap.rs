@@ -76,7 +76,7 @@ impl Bitmap {
 
     /// Gets an iterator that visits the values in the bitmap in ascending
     /// order.
-    pub(super) fn iter(&self) -> impl Iterator<Item = u16> + '_ {
+    pub(super) fn iter(&self) -> Iter<'_> {
         Iter::new(&self.0)
     }
 
@@ -110,7 +110,7 @@ impl FromIterator<u16> for Bitmap {
 
 impl From<&Array> for Bitmap {
     fn from(array: &Array) -> Self {
-        array.iter().copied().collect()
+        array.iter().collect()
     }
 }
 
@@ -131,7 +131,7 @@ impl From<u16> for Index {
     }
 }
 
-struct Iter<'a> {
+pub(crate) struct Iter<'a> {
     bitmap: &'a [u64; BITMAP_WORD_COUNT],
     index: usize,
     word: u64,
@@ -164,6 +164,10 @@ impl<'a> Iterator for Iter<'a> {
         self.word &= self.word - 1;
 
         Some(value as u16)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(BITMAP_WORD_COUNT * 64))
     }
 }
 

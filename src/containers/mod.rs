@@ -62,4 +62,37 @@ impl Container {
             Container::Bitmap(ref bitmap) => bitmap.max(),
         }
     }
+
+    /// Gets an iterator that visits the values in the container in ascending
+    /// order.
+    pub(crate) fn iter(&self) -> Iter<'_> {
+        Iter::new(self)
+    }
+}
+
+pub(crate) enum Iter<'a> {
+    /// Array container iterator.
+    Array(array::Iter<'a>),
+    /// Bitmap container iterator.
+    Bitmap(bitmap::Iter<'a>),
+}
+
+impl<'a> Iter<'a> {
+    fn new(container: &'a Container) -> Self {
+        match *container {
+            Container::Array(ref array) => Self::Array(array.iter()),
+            Container::Bitmap(ref bitmap) => Self::Bitmap(bitmap.iter()),
+        }
+    }
+}
+
+impl<'a> Iterator for Iter<'a> {
+    type Item = u16;
+
+    fn next(&mut self) -> Option<u16> {
+        match *self {
+            Self::Array(ref mut array) => array.next(),
+            Self::Bitmap(ref mut bitmap) => bitmap.next(),
+        }
+    }
 }

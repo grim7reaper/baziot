@@ -47,8 +47,8 @@ impl Array {
     }
 
     /// Gets an iterator that visits the values in the array in ascending order.
-    pub(super) fn iter(&self) -> impl Iterator<Item = &u16> + '_ {
-        self.0.iter()
+    pub(super) fn iter(&self) -> Iter<'_> {
+        Iter(self.0.iter().copied())
     }
 
     #[cfg(test)]
@@ -66,6 +66,20 @@ impl FromIterator<u16> for Array {
 impl From<&Bitmap> for Array {
     fn from(bitmap: &Bitmap) -> Self {
         bitmap.iter().by_ref().collect()
+    }
+}
+
+pub(crate) struct Iter<'a>(std::iter::Copied<std::slice::Iter<'a, u16>>);
+
+impl<'a> Iterator for Iter<'a> {
+    type Item = u16;
+
+    fn next(&mut self) -> Option<u16> {
+        self.0.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 
@@ -140,9 +154,6 @@ mod tests {
         bitmap.insert(3);
 
         let array = Array::from(&bitmap);
-        assert_eq!(
-            array.iter().copied().collect::<Vec<_>>(),
-            vec![3u16, 11, 77, 100]
-        );
+        assert_eq!(array.iter().collect::<Vec<_>>(), vec![3u16, 11, 77, 100]);
     }
 }

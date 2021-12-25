@@ -101,6 +101,101 @@ impl Roaring {
     pub fn is_empty(&self) -> bool {
         self.chunks.is_empty()
     }
+
+    /// Gets an iterator that visits the values in the bitmap in ascending
+    /// order.
+    pub fn iter(&self) -> Iter<'_> {
+        Iter::new(self.chunks.iter())
+    }
+}
+
+impl Extend<u32> for Roaring {
+    fn extend<I: IntoIterator<Item = u32>>(&mut self, iterator: I) {
+        for value in iterator {
+            self.insert(value);
+        }
+    }
+}
+
+impl FromIterator<u32> for Roaring {
+    fn from_iter<I: IntoIterator<Item = u32>>(iterator: I) -> Self {
+        let mut bitmap = Self::new();
+        bitmap.extend(iterator);
+        bitmap
+    }
+}
+
+impl<'a> IntoIterator for &'a Roaring {
+    type Item = u32;
+    type IntoIter = Iter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+pub struct Iter<'a> {
+    inner: std::slice::Iter<'a, Chunk<Header>>,
+    iter: Option<ChunkIter<'a>>,
+    size: usize,
+}
+
+impl<'a> Iter<'a> {
+    fn new(mut chunks: std::slice::Iter<'a, Chunk<Header>>) -> Self {
+        let size = chunks
+            .clone()
+            .fold(0, |acc, chunk| acc + chunk.cardinality());
+        let iter = chunks.next().map(Into::into);
+
+        Self {
+            inner: chunks,
+            iter,
+            size,
+        }
+    }
+}
+
+impl<'a> Iterator for Iter<'a> {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<u32> {
+        self.size = self.size.saturating_sub(1);
+        let iter = self.iter.as_mut()?;
+
+        iter.next().or_else(|| {
+            self.iter = self.inner.next().map(Into::into);
+            self.iter.as_mut().and_then(std::iter::Iterator::next)
+        })
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.size, Some(self.size))
+    }
+}
+
+/// Chunk iterator with its associated key.
+struct ChunkIter<'a> {
+    key: u16,
+    inner: chunk::Iter<'a>,
+}
+
+impl<'a> From<&'a Chunk<Header>> for ChunkIter<'a> {
+    fn from(chunk: &'a Chunk<Header>) -> Self {
+        Self {
+            key: chunk.key(),
+            inner: chunk.iter(),
+        }
+    }
+}
+
+impl<'a> Iterator for ChunkIter<'a> {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<u32> {
+        self.inner
+            .next()
+            .map(|value| Entry::from_parts(self.key, value).into())
+    }
 }
 
 /// `Roaring` bitmap entry.
@@ -284,5 +379,23 @@ mod tests {
 
         bitmap.clear();
         assert_eq!(bitmap.is_empty(), true);
+    }
+
+    #[test]
+    fn iterator_sparse() {
+        let input = (0..10_000).step_by(10).collect::<Vec<_>>();
+        let bitmap = input.iter().copied().collect::<Roaring>();
+        let values = (&bitmap).into_iter().collect::<Vec<_>>();
+
+        assert_eq!(values, input);
+    }
+
+    #[test]
+    fn iterator_dense() {
+        let input = (0..10_000).step_by(2).collect::<Vec<_>>();
+        let bitmap = input.iter().copied().collect::<Roaring>();
+        let values = (&bitmap).into_iter().collect::<Vec<_>>();
+
+        assert_eq!(values, input);
     }
 }
