@@ -74,7 +74,8 @@ impl Bitmap {
             })
     }
 
-    /// Returns an iterator over the bitmap values.
+    /// Gets an iterator that visits the values in the bitmap in ascending
+    /// order.
     pub(super) fn iter(&self) -> impl Iterator<Item = u16> + '_ {
         Iter::new(&self.0)
     }

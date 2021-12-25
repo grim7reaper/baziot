@@ -46,7 +46,7 @@ impl Array {
         self.0.last().copied()
     }
 
-    /// Returns an iterator over the array values.
+    /// Gets an iterator that visits the values in the array in ascending order.
     pub(super) fn iter(&self) -> impl Iterator<Item = &u16> + '_ {
         self.0.iter()
     }
