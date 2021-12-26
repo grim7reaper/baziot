@@ -1,7 +1,7 @@
+use super::Entry;
 use crate::{
     chunk::Chunk,
-    roaring::{Entry as ChunkEntry, Header},
-    roaring_tree_map::Entry,
+    roaring::{ChunkIter, Entry as ChunkEntry, Header},
 };
 
 pub(super) struct SuperChunk {
@@ -102,6 +102,43 @@ impl SuperChunk {
                     .map(|max| ChunkEntry::from_parts(chunk.key(), max).into())
             })
             .max()
+    }
+
+    /// Gets an iterator that visits the values in the superchunk in ascending
+    /// order.
+    pub(super) fn iter(&self) -> Iter<'_> {
+        Iter::new(self)
+    }
+}
+
+type ChunkFlatIter<'a> = std::iter::FlatMap<
+    std::slice::Iter<'a, Chunk<Header>>,
+    ChunkIter<'a>,
+    fn(&'a Chunk<Header>) -> ChunkIter<'a>,
+>;
+
+/// Super-chunk iterator wrapper, containing the associated key as well.
+pub(super) struct Iter<'a> {
+    key: u32,
+    inner: ChunkFlatIter<'a>,
+}
+
+impl<'a> Iter<'a> {
+    fn new(chunk: &'a SuperChunk) -> Self {
+        Self {
+            key: chunk.key,
+            inner: chunk.chunks.iter().flat_map(Into::into),
+        }
+    }
+}
+
+impl<'a> Iterator for Iter<'a> {
+    type Item = u64;
+
+    fn next(&mut self) -> Option<u64> {
+        self.inner
+            .next()
+            .map(|value| Entry::from_parts(self.key, value).into())
     }
 }
 

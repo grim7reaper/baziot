@@ -1,5 +1,4 @@
-use super::SuperChunk;
-use crate::roaring_tree_map::Entry;
+use super::{Entry, Iter, SuperChunk};
 
 /// Compressed bitmap for 64-bit integers, using a 2-level indexing.
 ///
@@ -106,6 +105,37 @@ impl Bitmap {
     pub fn is_empty(&self) -> bool {
         self.chunks.is_empty()
     }
+
+    /// Gets an iterator that visits the values in the bitmap in ascending
+    /// order.
+    pub fn iter(&self) -> Iter<'_> {
+        Iter::new(self.chunks.iter())
+    }
+}
+
+impl Extend<u64> for Bitmap {
+    fn extend<I: IntoIterator<Item = u64>>(&mut self, iterator: I) {
+        for value in iterator {
+            self.insert(value);
+        }
+    }
+}
+
+impl FromIterator<u64> for Bitmap {
+    fn from_iter<I: IntoIterator<Item = u64>>(iterator: I) -> Self {
+        let mut bitmap = Self::new();
+        bitmap.extend(iterator);
+        bitmap
+    }
+}
+
+impl<'a> IntoIterator for &'a Bitmap {
+    type Item = u64;
+    type IntoIter = Iter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
 }
 
 #[cfg(test)]
@@ -182,5 +212,23 @@ mod tests {
 
         bitmap.clear();
         assert_eq!(bitmap.is_empty(), true);
+    }
+
+    #[test]
+    fn iterator_sparse() {
+        let input = (0..10_000).step_by(10).collect::<Vec<_>>();
+        let bitmap = input.iter().copied().collect::<Bitmap>();
+        let values = (&bitmap).into_iter().collect::<Vec<_>>();
+
+        assert_eq!(values, input);
+    }
+
+    #[test]
+    fn iterator_dense() {
+        let input = (0..10_000).step_by(2).collect::<Vec<_>>();
+        let bitmap = input.iter().copied().collect::<Bitmap>();
+        let values = (&bitmap).into_iter().collect::<Vec<_>>();
+
+        assert_eq!(values, input);
     }
 }

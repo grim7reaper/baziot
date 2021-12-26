@@ -38,7 +38,7 @@ impl<'a> Iterator for Iter<'a> {
 }
 
 /// Chunk iterator wrapper, containing the associated key as well.
-struct ChunkIter<'a> {
+pub(crate) struct ChunkIter<'a> {
     key: u16,
     inner: chunk::Iter<'a>,
 }
