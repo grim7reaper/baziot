@@ -12,7 +12,6 @@
     unreachable_pub,
     unsafe_code,
     unused,
-    unused_crate_dependencies,
     unused_import_braces,
     unused_lifetimes,
     unused_qualifications,
@@ -43,6 +42,8 @@
     clippy::non_ascii_literal,
     // Too noisy for little value.
     clippy::must_use_candidate,
+    // False positive with criterion…
+    unused_crate_dependencies,
 )]
 
 // }}}
