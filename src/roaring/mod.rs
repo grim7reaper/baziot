@@ -7,5 +7,4 @@ pub use bitmap::Bitmap as Roaring;
 
 pub(super) use entry::Entry;
 pub(super) use header::Header;
-
-use iter::Iter;
+pub(super) use iter::Iter;
