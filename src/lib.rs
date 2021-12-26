@@ -53,7 +53,6 @@ mod roaring;
 mod roaring_lazy;
 mod roaring_tree_map;
 mod roaring_two_levels;
-mod superchunk;
 
 pub use roaring::Roaring;
 pub use roaring_lazy::RoaringLazy;

@@ -1,5 +1,5 @@
+use super::SuperChunk;
 use crate::roaring_tree_map::Entry;
-use crate::superchunk::SuperChunk;
 
 /// Compressed bitmap for 64-bit integers, using a 2-level indexing.
 ///
@@ -7,13 +7,13 @@ use crate::superchunk::SuperChunk;
 /// each chunk indexes a container using the 16 most significant bits from the
 /// lower half of the value.
 #[derive(Default)]
-pub struct RoaringLazy {
+pub struct Bitmap {
     /// Bitmap super chunks, indexed by the 32 most significant bits of the
     /// integer.
     chunks: Vec<SuperChunk>,
 }
 
-impl RoaringLazy {
+impl Bitmap {
     /// Create an empty bitmap.
     pub fn new() -> Self {
         Self::default()
@@ -114,7 +114,7 @@ mod tests {
 
     #[test]
     fn insertion_deletion() {
-        let mut bitmap = RoaringLazy::new();
+        let mut bitmap = Bitmap::new();
         assert_eq!(bitmap.cardinality(), 0);
         assert_eq!(bitmap.min(), None);
         assert_eq!(bitmap.max(), None);
@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn contains() {
-        let mut bitmap = RoaringLazy::new();
+        let mut bitmap = Bitmap::new();
         assert_eq!(bitmap.contains(42), false);
 
         bitmap.insert(42);
@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn already_exists() {
-        let mut bitmap = RoaringLazy::new();
+        let mut bitmap = Bitmap::new();
 
         assert_eq!(bitmap.insert(42), true, "new entry");
         assert_eq!(bitmap.insert(42), false, "already exists");
@@ -162,7 +162,7 @@ mod tests {
 
     #[test]
     fn missing() {
-        let mut bitmap = RoaringLazy::new();
+        let mut bitmap = Bitmap::new();
 
         bitmap.insert(11);
 
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn is_empty() {
-        let mut bitmap = RoaringLazy::new();
+        let mut bitmap = Bitmap::new();
         assert_eq!(bitmap.is_empty(), true);
 
         bitmap.insert(250070690292783730);
