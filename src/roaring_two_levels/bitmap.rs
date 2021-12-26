@@ -1,13 +1,14 @@
-use crate::chunk::{self, Chunk};
+use super::{Entry, Header};
+use crate::chunk::Chunk;
 
 /// Compressed bitmap for 64-bit integers, using 48-bit prefix key.
 #[derive(Default)]
-pub struct RoaringTwoLevels {
+pub struct Bitmap {
     /// Bitmap chunks, indexed by the 48 most significant bits of the integer.
     chunks: Vec<Chunk<Header>>,
 }
 
-impl RoaringTwoLevels {
+impl Bitmap {
     /// Create an empty bitmap.
     pub fn new() -> Self {
         Self::default()
@@ -103,151 +104,13 @@ impl RoaringTwoLevels {
     }
 }
 
-/// `RoaringTwoLevels` bitmap entry.
-pub(super) struct Entry {
-    /// Most significant bits (48).
-    pub(super) hi: u64,
-    /// Least significant bits (16).
-    pub(super) lo: u16,
-}
-
-impl Entry {
-    pub(super) fn from_parts(hi: u64, lo: u16) -> Self {
-        Self { hi, lo }
-    }
-}
-
-impl From<u64> for Entry {
-    #[allow(clippy::cast_possible_truncation)] // We truncate on purpose here.
-    fn from(value: u64) -> Self {
-        Self::from_parts((value >> 16) as u64, (value & 0xFFFF) as u16)
-    }
-}
-
-impl From<Entry> for u64 {
-    fn from(entry: Entry) -> Self {
-        entry.hi << 16 | u64::from(entry.lo)
-    }
-}
-
-/// Chunk header.
-pub(super) struct Header {
-    /// Header's data.
-    ///
-    /// Contains both the chunk's key (in the upper 48 bits) and the chunk's
-    /// cardinality minus one (in the lower 16 bits) packed into a single
-    /// 64-bit integer.
-    ///
-    /// Storing `cardinality - 1` allows to count up to 65536 while staying on
-    /// 16-bit (that way it fits alongside the key), and it's safe because the
-    /// minimum size is 1 (empty chunks are deallocated).
-    data: u64,
-}
-
-impl Header {
-    /// Initializes a new Chunk's header.
-    pub(super) fn new(key: u64) -> Self {
-        Self { data: key << 16 }
-    }
-
-    /// Extracts the cardinality from the packed data field.
-    #[allow(clippy::cast_possible_truncation)] // We truncate on purpose here.
-    fn unpack_cardinality(&self) -> u16 {
-        (self.data & 0xFFFF) as u16
-    }
-
-    /// Packs a new cardinality value into the packed data field.
-    fn pack_cardinality(&mut self, cardinality: u16) {
-        const CARDINALITY_MASK: u64 = 0xFFFF_FFFF_FFFF_0000;
-        self.data = (self.data & CARDINALITY_MASK) | u64::from(cardinality);
-    }
-}
-
-impl chunk::Header for Header {
-    type Key = u64;
-
-    fn key(&self) -> Self::Key {
-        self.data >> 16
-    }
-
-    fn cardinality(&self) -> usize {
-        usize::from(self.unpack_cardinality()) + 1
-    }
-
-    fn increase_cardinality(&mut self) {
-        let cardinality = self.unpack_cardinality() + 1;
-        self.pack_cardinality(cardinality);
-    }
-
-    fn decrease_cardinality(&mut self) {
-        let cardinality = self.unpack_cardinality().saturating_sub(1);
-        self.pack_cardinality(cardinality);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chunk::Header as HeaderTrait;
-
-    #[test]
-    fn entry() {
-        let value = 0x0000_0000_0000_0000;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0x0000);
-        assert_eq!(entry.lo, 0x0000);
-        assert_eq!(u64::from(entry), value);
-
-        let value = 0x0000_0000_0000_0001;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0x0000);
-        assert_eq!(entry.lo, 0x0001);
-        assert_eq!(u64::from(entry), value);
-
-        let value = 0x0000_0000_1000_0000;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0x0000_0000_1000);
-        assert_eq!(entry.lo, 0x0000);
-        assert_eq!(u64::from(entry), value);
-
-        let value = 0x0000_0001_0000_0000;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0x0000_0001_0000);
-        assert_eq!(entry.lo, 0x0000);
-        assert_eq!(u64::from(entry), value);
-
-        let value = 0x1000_0000_0000_0000;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0x1000_0000_0000);
-        assert_eq!(entry.lo, 0x0000);
-        assert_eq!(u64::from(entry), value);
-
-        let value = 0xFEED_FACE_CAFE_BEEF;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0xFEED_FACE_CAFE);
-        assert_eq!(entry.lo, 0xBEEF);
-        assert_eq!(u64::from(entry), value);
-    }
-
-    #[test]
-    fn header() {
-        let mut header = Header::new(0xFEED_DEAD_BEEF);
-        assert_eq!(header.data, 0xFEED_DEAD_BEEF_0000);
-        assert_eq!(header.key(), 0xFEED_DEAD_BEEF);
-        assert_eq!(header.unpack_cardinality(), 0);
-
-        header.increase_cardinality();
-        assert_eq!(header.key(), 0xFEED_DEAD_BEEF);
-        assert_eq!(header.unpack_cardinality(), 1);
-
-        header.decrease_cardinality();
-        assert_eq!(header.key(), 0xFEED_DEAD_BEEF);
-        assert_eq!(header.unpack_cardinality(), 0);
-    }
 
     #[test]
     fn insertion_deletion() {
-        let mut bitmap = RoaringTwoLevels::new();
+        let mut bitmap = Bitmap::new();
         assert_eq!(bitmap.cardinality(), 0);
         assert_eq!(bitmap.min(), None);
         assert_eq!(bitmap.max(), None);
@@ -275,7 +138,7 @@ mod tests {
 
     #[test]
     fn contains() {
-        let mut bitmap = RoaringTwoLevels::new();
+        let mut bitmap = Bitmap::new();
         assert_eq!(bitmap.contains(42), false);
 
         bitmap.insert(42);
@@ -287,7 +150,7 @@ mod tests {
 
     #[test]
     fn already_exists() {
-        let mut bitmap = RoaringTwoLevels::new();
+        let mut bitmap = Bitmap::new();
 
         assert_eq!(bitmap.insert(42), true, "new entry");
         assert_eq!(bitmap.insert(42), false, "already exists");
@@ -295,7 +158,7 @@ mod tests {
 
     #[test]
     fn missing() {
-        let mut bitmap = RoaringTwoLevels::new();
+        let mut bitmap = Bitmap::new();
 
         bitmap.insert(11);
 
@@ -305,7 +168,7 @@ mod tests {
 
     #[test]
     fn is_empty() {
-        let mut bitmap = RoaringTwoLevels::new();
+        let mut bitmap = Bitmap::new();
         assert_eq!(bitmap.is_empty(), true);
 
         bitmap.insert(250070690292783730);
