@@ -59,3 +59,5 @@ pub use roaring::Roaring;
 pub use roaring_lazy::RoaringLazy;
 pub use roaring_tree_map::RoaringTreeMap;
 pub use roaring_two_levels::RoaringTwoLevels;
+
+use chunk::Chunk;

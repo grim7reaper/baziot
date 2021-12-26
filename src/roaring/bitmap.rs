@@ -1,13 +1,14 @@
-use crate::chunk::{self, Chunk};
+use super::{Entry, Header, Iter};
+use crate::Chunk;
 
 /// Compressed bitmap for 32-bit integers.
 #[derive(Default)]
-pub struct Roaring {
+pub struct Bitmap {
     /// Bitmap chunks, indexed by the 16 most significant bits of the integer.
     chunks: Vec<Chunk<Header>>,
 }
 
-impl Roaring {
+impl Bitmap {
     /// Create an empty bitmap.
     pub fn new() -> Self {
         Self::default()
@@ -109,7 +110,7 @@ impl Roaring {
     }
 }
 
-impl Extend<u32> for Roaring {
+impl Extend<u32> for Bitmap {
     fn extend<I: IntoIterator<Item = u32>>(&mut self, iterator: I) {
         for value in iterator {
             self.insert(value);
@@ -117,7 +118,7 @@ impl Extend<u32> for Roaring {
     }
 }
 
-impl FromIterator<u32> for Roaring {
+impl FromIterator<u32> for Bitmap {
     fn from_iter<I: IntoIterator<Item = u32>>(iterator: I) -> Self {
         let mut bitmap = Self::new();
         bitmap.extend(iterator);
@@ -125,7 +126,7 @@ impl FromIterator<u32> for Roaring {
     }
 }
 
-impl<'a> IntoIterator for &'a Roaring {
+impl<'a> IntoIterator for &'a Bitmap {
     type Item = u32;
     type IntoIter = Iter<'a>;
 
@@ -134,184 +135,13 @@ impl<'a> IntoIterator for &'a Roaring {
     }
 }
 
-pub struct Iter<'a> {
-    inner: std::slice::Iter<'a, Chunk<Header>>,
-    iter: Option<ChunkIter<'a>>,
-    size: usize,
-}
-
-impl<'a> Iter<'a> {
-    fn new(mut chunks: std::slice::Iter<'a, Chunk<Header>>) -> Self {
-        let size = chunks
-            .clone()
-            .fold(0, |acc, chunk| acc + chunk.cardinality());
-        let iter = chunks.next().map(Into::into);
-
-        Self {
-            inner: chunks,
-            iter,
-            size,
-        }
-    }
-}
-
-impl<'a> Iterator for Iter<'a> {
-    type Item = u32;
-
-    fn next(&mut self) -> Option<u32> {
-        self.size = self.size.saturating_sub(1);
-        let iter = self.iter.as_mut()?;
-
-        iter.next().or_else(|| {
-            self.iter = self.inner.next().map(Into::into);
-            self.iter.as_mut().and_then(std::iter::Iterator::next)
-        })
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.size, Some(self.size))
-    }
-}
-
-/// Chunk iterator with its associated key.
-struct ChunkIter<'a> {
-    key: u16,
-    inner: chunk::Iter<'a>,
-}
-
-impl<'a> From<&'a Chunk<Header>> for ChunkIter<'a> {
-    fn from(chunk: &'a Chunk<Header>) -> Self {
-        Self {
-            key: chunk.key(),
-            inner: chunk.iter(),
-        }
-    }
-}
-
-impl<'a> Iterator for ChunkIter<'a> {
-    type Item = u32;
-
-    fn next(&mut self) -> Option<u32> {
-        self.inner
-            .next()
-            .map(|value| Entry::from_parts(self.key, value).into())
-    }
-}
-
-/// `Roaring` bitmap entry.
-pub(super) struct Entry {
-    /// Most significant bits.
-    pub(super) hi: u16,
-    /// Least significant bits.
-    pub(super) lo: u16,
-}
-
-impl Entry {
-    pub(super) fn from_parts(hi: u16, lo: u16) -> Self {
-        Self { hi, lo }
-    }
-}
-
-impl From<u32> for Entry {
-    #[allow(clippy::cast_possible_truncation)] // We truncate on purpose here.
-    fn from(value: u32) -> Self {
-        Self::from_parts((value >> 16) as u16, (value & 0xFFFF) as u16)
-    }
-}
-
-impl From<Entry> for u32 {
-    fn from(entry: Entry) -> Self {
-        u32::from(entry.hi) << 16 | u32::from(entry.lo)
-    }
-}
-
-/// Chunk header.
-pub(super) struct Header {
-    /// The 16 most significant bits.
-    key: u16,
-    /// Chunk's cardinality minus one.
-    ///
-    /// -1 allows to count up to 65536 while staying on 16-bit, and it's
-    /// safe because the minimum size is 1 (empty chunks are deallocated).
-    cardinality: u16,
-}
-
-impl Header {
-    /// Initializes a new Chunk's header.
-    pub(super) fn new(key: u16) -> Self {
-        Self {
-            key,
-            cardinality: 0,
-        }
-    }
-}
-
-impl chunk::Header for Header {
-    type Key = u16;
-
-    fn key(&self) -> Self::Key {
-        self.key
-    }
-
-    fn cardinality(&self) -> usize {
-        usize::from(self.cardinality) + 1
-    }
-
-    fn increase_cardinality(&mut self) {
-        self.cardinality += 1;
-    }
-
-    fn decrease_cardinality(&mut self) {
-        self.cardinality = self.cardinality.saturating_sub(1);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn entry() {
-        let value = 0x0000_0000;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0x0000);
-        assert_eq!(entry.lo, 0x0000);
-        assert_eq!(u32::from(entry), value);
-
-        let value = 0x0000_0001;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0x0000);
-        assert_eq!(entry.lo, 0x0001);
-        assert_eq!(u32::from(entry), value);
-
-        let value = 0x0000_1000;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0x0000);
-        assert_eq!(entry.lo, 0x1000);
-        assert_eq!(u32::from(entry), value);
-
-        let value = 0x0001_0000;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0x0001);
-        assert_eq!(entry.lo, 0x0000);
-        assert_eq!(u32::from(entry), value);
-
-        let value = 0x1000_0000;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0x1000);
-        assert_eq!(entry.lo, 0x0000);
-        assert_eq!(u32::from(entry), value);
-
-        let value = 0xDEAD_BEEF;
-        let entry = Entry::from(value);
-        assert_eq!(entry.hi, 0xDEAD);
-        assert_eq!(entry.lo, 0xBEEF);
-        assert_eq!(u32::from(entry), value);
-    }
-
-    #[test]
     fn insertion_deletion() {
-        let mut bitmap = Roaring::new();
+        let mut bitmap = Bitmap::new();
         assert_eq!(bitmap.cardinality(), 0);
         assert_eq!(bitmap.min(), None);
         assert_eq!(bitmap.max(), None);
@@ -339,7 +169,7 @@ mod tests {
 
     #[test]
     fn contains() {
-        let mut bitmap = Roaring::new();
+        let mut bitmap = Bitmap::new();
         assert_eq!(bitmap.contains(42), false);
 
         bitmap.insert(42);
@@ -351,7 +181,7 @@ mod tests {
 
     #[test]
     fn already_exists() {
-        let mut bitmap = Roaring::new();
+        let mut bitmap = Bitmap::new();
 
         assert_eq!(bitmap.insert(42), true, "new entry");
         assert_eq!(bitmap.insert(42), false, "already exists");
@@ -359,7 +189,7 @@ mod tests {
 
     #[test]
     fn missing() {
-        let mut bitmap = Roaring::new();
+        let mut bitmap = Bitmap::new();
 
         bitmap.insert(11);
 
@@ -369,7 +199,7 @@ mod tests {
 
     #[test]
     fn is_empty() {
-        let mut bitmap = Roaring::new();
+        let mut bitmap = Bitmap::new();
         assert_eq!(bitmap.is_empty(), true);
 
         bitmap.insert(1538809352);
@@ -384,7 +214,7 @@ mod tests {
     #[test]
     fn iterator_sparse() {
         let input = (0..10_000).step_by(10).collect::<Vec<_>>();
-        let bitmap = input.iter().copied().collect::<Roaring>();
+        let bitmap = input.iter().copied().collect::<Bitmap>();
         let values = (&bitmap).into_iter().collect::<Vec<_>>();
 
         assert_eq!(values, input);
@@ -393,7 +223,7 @@ mod tests {
     #[test]
     fn iterator_dense() {
         let input = (0..10_000).step_by(2).collect::<Vec<_>>();
-        let bitmap = input.iter().copied().collect::<Roaring>();
+        let bitmap = input.iter().copied().collect::<Bitmap>();
         let values = (&bitmap).into_iter().collect::<Vec<_>>();
 
         assert_eq!(values, input);
