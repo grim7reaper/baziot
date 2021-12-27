@@ -29,3 +29,7 @@ harness = false
 [[bench]]
 name = "roaring_tree_map"
 harness = false
+
+[[bench]]
+name = "roaring_lazy"
+harness = false
