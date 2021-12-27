@@ -25,3 +25,7 @@ harness = false
 [[bench]]
 name = "roaring_two_levels"
 harness = false
+
+[[bench]]
+name = "roaring_tree_map"
+harness = false
