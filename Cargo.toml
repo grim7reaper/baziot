@@ -21,15 +21,3 @@ rand = "0.8"
 [[bench]]
 name = "roaring"
 harness = false
-
-[[bench]]
-name = "roaring_two_levels"
-harness = false
-
-[[bench]]
-name = "roaring_tree_map"
-harness = false
-
-[[bench]]
-name = "roaring_lazy"
-harness = false
