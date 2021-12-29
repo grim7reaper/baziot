@@ -54,10 +54,13 @@ mod roaring;
 mod roaring_lazy;
 mod roaring_tree_map;
 mod roaring_two_levels;
+mod stats;
 
 pub use roaring::Roaring;
 pub use roaring_lazy::RoaringLazy;
 pub use roaring_tree_map::RoaringTreeMap;
 pub use roaring_two_levels::RoaringTwoLevels;
+pub use stats::Stats;
 
 use chunk::Chunk;
+use containers::Container;

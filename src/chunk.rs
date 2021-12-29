@@ -73,6 +73,11 @@ impl<H: Header> Chunk<H> {
         self.header.key()
     }
 
+    /// Returns the chunk container.
+    pub(super) fn container(&self) -> &Container {
+        &self.container
+    }
+
     /// Returns the chunk cardinality.
     pub(super) fn cardinality(&self) -> usize {
         self.header.cardinality()

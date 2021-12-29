@@ -1,4 +1,5 @@
 use super::{Entry, Iter, SuperChunk};
+use crate::Stats;
 use std::mem;
 
 /// Compressed bitmap for 64-bit integers, using a 2-level indexing.
@@ -121,6 +122,40 @@ impl Bitmap {
                 .iter()
                 .fold(0, |acc, chunk| acc + chunk.mem_size())
     }
+
+    /// Returns detailed statistics about the composition of the bitmap.
+    pub fn stats(&self) -> Stats<u64> {
+        let stats = Stats {
+            nb_containers: 0,
+            nb_array_containers: 0,
+            nb_bitmap_containers: 0,
+
+            nb_values: self.cardinality(),
+            nb_values_array_containers: 0,
+            nb_values_bitmap_containers: 0,
+
+            nb_bytes: self.mem_size(),
+            nb_bytes_array_containers: 0,
+            nb_bytes_bitmap_containers: 0,
+
+            min_value: self.min(),
+            max_value: self.max(),
+        };
+
+        self.chunks.iter().fold(stats, |mut acc, chunk| {
+            let sub = chunk.stats();
+
+            acc.nb_containers += sub.nb_containers;
+            acc.nb_array_containers += sub.nb_array_containers;
+            acc.nb_bitmap_containers += sub.nb_bitmap_containers;
+            acc.nb_values_array_containers += sub.nb_values_array_containers;
+            acc.nb_values_bitmap_containers += sub.nb_values_bitmap_containers;
+            acc.nb_bytes_array_containers += sub.nb_bytes_array_containers;
+            acc.nb_bytes_bitmap_containers += sub.nb_bytes_bitmap_containers;
+
+            acc
+        })
+    }
 }
 
 impl Extend<u64> for Bitmap {
@@ -228,8 +263,11 @@ mod tests {
     fn iterator_sparse() {
         let input = (0..10_000).step_by(10).collect::<Vec<_>>();
         let bitmap = input.iter().copied().collect::<Bitmap>();
-        let values = (&bitmap).into_iter().collect::<Vec<_>>();
 
+        let stats = bitmap.stats();
+        assert_eq!(stats.nb_bitmap_containers, 0, "sparse bitmap");
+
+        let values = (&bitmap).into_iter().collect::<Vec<_>>();
         assert_eq!(values, input);
     }
 
@@ -237,8 +275,11 @@ mod tests {
     fn iterator_dense() {
         let input = (0..10_000).step_by(2).collect::<Vec<_>>();
         let bitmap = input.iter().copied().collect::<Bitmap>();
-        let values = (&bitmap).into_iter().collect::<Vec<_>>();
 
+        let stats = bitmap.stats();
+        assert_eq!(stats.nb_array_containers, 0, "dense bitmap");
+
+        let values = (&bitmap).into_iter().collect::<Vec<_>>();
         assert_eq!(values, input);
     }
 

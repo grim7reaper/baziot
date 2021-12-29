@@ -1,7 +1,7 @@
 use super::Entry;
 use crate::{
-    chunk::Chunk,
     roaring::{ChunkIter, Entry as ChunkEntry, Header},
+    Chunk, Container, Stats,
 };
 use std::mem;
 
@@ -118,6 +118,44 @@ impl SuperChunk {
                 .chunks
                 .iter()
                 .fold(0, |acc, chunk| acc + chunk.mem_size())
+    }
+
+    /// Returns detailed statistics about the composition of the superchunk.
+    pub(super) fn stats(&self) -> Stats<u32> {
+        let stats = Stats {
+            nb_containers: self.chunks.len(),
+            nb_array_containers: 0,
+            nb_bitmap_containers: 0,
+
+            nb_values: self.cardinality(),
+            nb_values_array_containers: 0,
+            nb_values_bitmap_containers: 0,
+
+            nb_bytes: self.mem_size(),
+            nb_bytes_array_containers: 0,
+            nb_bytes_bitmap_containers: 0,
+
+            min_value: None, // Unused.
+            max_value: None, // Unused.
+        };
+
+        self.chunks.iter().fold(stats, |mut acc, chunk| {
+            acc.nb_containers += 1;
+            match *chunk.container() {
+                Container::Array(_) => {
+                    acc.nb_array_containers += 1;
+                    acc.nb_values_array_containers += chunk.cardinality();
+                    acc.nb_bytes_array_containers += chunk.mem_size();
+                },
+                Container::Bitmap(_) => {
+                    acc.nb_bitmap_containers += 1;
+                    acc.nb_values_bitmap_containers += chunk.cardinality();
+                    acc.nb_bytes_bitmap_containers += chunk.mem_size();
+                },
+            }
+
+            acc
+        })
     }
 }
 
