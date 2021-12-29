@@ -133,6 +133,7 @@ impl From<u16> for Index {
 
 pub(crate) struct Iter<'a> {
     bitmap: &'a [u64; BITMAP_WORD_COUNT],
+    size: usize,
     index: usize,
     word: u64,
 }
@@ -141,6 +142,9 @@ impl<'a> Iter<'a> {
     fn new(bitmap: &'a [u64; BITMAP_WORD_COUNT]) -> Self {
         Self {
             bitmap,
+            size: bitmap
+                .iter()
+                .fold(0_usize, |acc, word| acc + (word.count_ones() as usize)),
             index: 0,
             word: bitmap[0],
         }
@@ -162,12 +166,13 @@ impl<'a> Iterator for Iter<'a> {
         }
         let value = (self.index as u32) * 64 + self.word.trailing_zeros();
         self.word &= self.word - 1;
+        self.size -= 1;
 
         Some(value as u16)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, Some(BITMAP_WORD_COUNT * 64))
+        (self.size, Some(self.size))
     }
 }
 
