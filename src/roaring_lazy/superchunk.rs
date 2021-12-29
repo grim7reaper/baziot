@@ -3,6 +3,7 @@ use crate::{
     chunk::Chunk,
     roaring::{ChunkIter, Entry as ChunkEntry, Header},
 };
+use std::mem;
 
 pub(super) struct SuperChunk {
     key: u32,
@@ -109,6 +110,15 @@ impl SuperChunk {
     pub(super) fn iter(&self) -> Iter<'_> {
         Iter::new(self)
     }
+
+    /// Returns the approximate in-memory size of the bitmap, in bytes.
+    pub(super) fn mem_size(&self) -> usize {
+        mem::size_of_val(self)
+            + self
+                .chunks
+                .iter()
+                .fold(0, |acc, chunk| acc + chunk.mem_size())
+    }
 }
 
 type ChunkFlatIter<'a> = std::iter::FlatMap<
@@ -201,5 +211,18 @@ mod tests {
 
         assert_eq!(chunk.remove(11), true, "found");
         assert_eq!(chunk.remove(11), false, "missing entry");
+    }
+
+    #[test]
+    fn mem_size() {
+        let entry = 0.into();
+        let chunk = SuperChunk::new(&entry);
+        let chunks_size = chunk
+            .chunks
+            .iter()
+            .fold(0, |acc, chunk| acc + chunk.mem_size());
+
+        // Ensure we don't forget to account for the Vec overhead.
+        assert!(chunk.mem_size() > chunks_size);
     }
 }

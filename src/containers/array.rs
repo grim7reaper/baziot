@@ -1,5 +1,5 @@
 use super::bitmap::Bitmap;
-use std::iter::FromIterator;
+use std::{iter::FromIterator, mem};
 
 /// A sorted array of packed 16-bit integers.
 pub(crate) struct Array(Vec<u16>);
@@ -49,6 +49,11 @@ impl Array {
     /// Gets an iterator that visits the values in the array in ascending order.
     pub(super) fn iter(&self) -> Iter<'_> {
         Iter(self.0.iter().copied())
+    }
+
+    /// Returns the approximate in-memory size of the array, in bytes.
+    pub(super) fn mem_size(&self) -> usize {
+        mem::size_of_val(self) + self.0.len() * mem::size_of::<u16>()
     }
 
     #[cfg(test)]
@@ -155,5 +160,17 @@ mod tests {
 
         let array = Array::from(&bitmap);
         assert_eq!(array.iter().collect::<Vec<_>>(), vec![3u16, 11, 77, 100]);
+    }
+
+    #[test]
+    fn mem_size() {
+        let mut array = Array::new(42);
+        let size = array.mem_size();
+
+        array.insert(11);
+        array.insert(100);
+
+        // Size grows as we insert values.
+        assert!(size <= array.mem_size());
     }
 }

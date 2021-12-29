@@ -1,4 +1,5 @@
 use crate::containers::{self, Container};
+use std::mem;
 
 // Number of elements that defines the limit between a sparse and dense chunk.
 const SPARSE_CHUNK_THRESHOLD: usize = 4_096;
@@ -91,6 +92,11 @@ impl<H: Header> Chunk<H> {
     /// order.
     pub(super) fn iter(&self) -> Iter<'_> {
         self.container.iter()
+    }
+
+    /// Returns the approximate in-memory size of the chunk, in bytes.
+    pub(super) fn mem_size(&self) -> usize {
+        mem::size_of_val(&self.header) + self.container.mem_size()
     }
 
     /// Ensures that the container is adapted to the chunk's cardinality.
@@ -202,5 +208,15 @@ mod tests {
         chunk.insert(3);
         assert_eq!(chunk.min(), Some(3));
         assert_eq!(chunk.max(), Some(100));
+    }
+
+    #[test]
+    fn mem_size() {
+        let header = Header::new(0);
+        let chunk = Chunk::new(header, 42);
+        let container_size = chunk.container.mem_size();
+
+        // Ensure we don't forget to account for the header overhead.
+        assert!(chunk.mem_size() > container_size);
     }
 }

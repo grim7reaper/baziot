@@ -1,4 +1,5 @@
 use super::{Entry, Iter, SuperChunk};
+use std::mem;
 
 /// Compressed bitmap for 64-bit integers, using a 2-level indexing.
 ///
@@ -110,6 +111,15 @@ impl Bitmap {
     /// order.
     pub fn iter(&self) -> Iter<'_> {
         Iter::new(self.chunks.iter())
+    }
+
+    /// Returns the approximate in-memory size of the bitmap, in bytes.
+    pub fn mem_size(&self) -> usize {
+        mem::size_of_val(self)
+            + self
+                .chunks
+                .iter()
+                .fold(0, |acc, chunk| acc + chunk.mem_size())
     }
 }
 
@@ -230,5 +240,17 @@ mod tests {
         let values = (&bitmap).into_iter().collect::<Vec<_>>();
 
         assert_eq!(values, input);
+    }
+
+    #[test]
+    fn mem_size() {
+        let bitmap = (0..10_000).step_by(2).collect::<Bitmap>();
+        let chunks_size = bitmap
+            .chunks
+            .iter()
+            .fold(0, |acc, chunk| acc + chunk.mem_size());
+
+        // Ensure we don't forget to account for the Vec overhead.
+        assert!(bitmap.mem_size() > chunks_size);
     }
 }

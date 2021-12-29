@@ -1,5 +1,5 @@
 use super::array::Array;
-use std::iter::FromIterator;
+use std::{iter::FromIterator, mem};
 
 /// Bitmap size, in 64-bit words.
 const BITMAP_WORD_COUNT: usize = 1024;
@@ -78,6 +78,11 @@ impl Bitmap {
     /// order.
     pub(super) fn iter(&self) -> Iter<'_> {
         Iter::new(&self.0)
+    }
+
+    /// Returns the approximate in-memory size of the bitmap, in bytes.
+    pub(super) fn mem_size(&self) -> usize {
+        mem::size_of_val(self) + mem::size_of::<[u64; BITMAP_WORD_COUNT]>()
     }
 
     /// Tests the bit at `index`.
@@ -277,5 +282,17 @@ mod tests {
 
         let bitmap = Bitmap::from(&array);
         assert_eq!(bitmap.iter().collect::<Vec<_>>(), vec![3u16, 11, 77, 100]);
+    }
+
+    #[test]
+    fn mem_size() {
+        let mut bitmap = Bitmap::new();
+        let size = bitmap.mem_size();
+
+        bitmap.insert(11);
+        bitmap.insert(42);
+
+        // Bitmap are pre-allocated, size doesn't change with insertions.
+        assert_eq!(size, bitmap.mem_size());
     }
 }

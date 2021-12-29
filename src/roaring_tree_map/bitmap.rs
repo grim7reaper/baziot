@@ -1,6 +1,6 @@
 use super::{Entry, Iter};
 use crate::Roaring;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, mem};
 
 /// Compressed bitmap for 64-bit integers.
 ///
@@ -98,6 +98,14 @@ impl Bitmap {
     /// order.
     pub(super) fn iter(&self) -> Iter<'_> {
         Iter::new(self.bitmaps.iter())
+    }
+
+    /// Returns the approximate in-memory size of the bitmap, in bytes.
+    pub fn mem_size(&self) -> usize {
+        mem::size_of_val(self)
+            + self.bitmaps.iter().fold(0, |acc, (key, bitmap)| {
+                acc + mem::size_of_val(key) + bitmap.mem_size()
+            })
     }
 }
 
@@ -218,5 +226,17 @@ mod tests {
         let values = (&bitmap).into_iter().collect::<Vec<_>>();
 
         assert_eq!(values, input);
+    }
+
+    #[test]
+    fn mem_size() {
+        let bitmap = (0..10_000).step_by(2).collect::<Bitmap>();
+        let bitmaps_size =
+            bitmap.bitmaps.iter().fold(0, |acc, (key, bitmap)| {
+                acc + mem::size_of_val(key) + bitmap.mem_size()
+            });
+
+        // Ensure we don't forget to account for the BTreeMap overhead.
+        assert!(bitmap.mem_size() > bitmaps_size);
     }
 }

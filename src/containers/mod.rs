@@ -68,6 +68,14 @@ impl Container {
     pub(crate) fn iter(&self) -> Iter<'_> {
         Iter::new(self)
     }
+
+    /// Returns the approximate in-memory size of the container, in bytes.
+    pub(crate) fn mem_size(&self) -> usize {
+        match *self {
+            Container::Array(ref array) => array.mem_size(),
+            Container::Bitmap(ref bitmap) => bitmap.mem_size(),
+        }
+    }
 }
 
 pub(crate) enum Iter<'a> {
