@@ -22,3 +22,7 @@ rand = "0.8"
 [[bench]]
 name = "roaring"
 harness = false
+
+# See https://bheisler.github.io/criterion.rs/book/faq.html
+[lib]
+bench = false
