@@ -1,11 +1,22 @@
 use baziot::{Roaring, RoaringLazy, RoaringTreeMap, RoaringTwoLevels};
 use criterion::{
-    black_box, criterion_group, criterion_main, BatchSize, BenchmarkId,
-    Criterion,
+    black_box, criterion_group, criterion_main, AxisScale, BatchSize,
+    BenchmarkId, Criterion, PlotConfiguration,
 };
 use rand::{
     distributions::Standard, prelude::*, seq::SliceRandom, thread_rng, Rng,
 };
+
+macro_rules! new_benchmark_group {
+    // Initialize a new benchmark group with logarithmic axis scale.
+    ($c:ident, $name:literal) => {{
+        let plot_config =
+            PlotConfiguration::default().summary_scale(AxisScale::Logarithmic);
+        let mut group = $c.benchmark_group($name);
+        group.plot_config(plot_config);
+        group
+    }};
+}
 
 macro_rules! bench_insert_loop {
     // Benchmark insertion using a loop, with either sorted or unsorted input.
@@ -25,7 +36,7 @@ macro_rules! bench_insert_loop {
 }
 
 fn insert_sorted_loop(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Inser/Sorted/Loop");
+    let mut group = new_benchmark_group!(c, "Inser/Sorted/Loop");
     for count in [1, 10, 100, 1_000, 10_000].iter() {
         bench_insert_loop!(group, count, true, Roaring, u32);
         bench_insert_loop!(group, count, true, RoaringTwoLevels, u64);
@@ -36,7 +47,7 @@ fn insert_sorted_loop(c: &mut Criterion) {
 }
 
 fn insert_random_loop(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Insert/Random/Loop");
+    let mut group = new_benchmark_group!(c, "Insert/Random/Loop");
     for count in [1, 10, 100, 1_000, 10_000].iter() {
         bench_insert_loop!(group, count, false, Roaring, u32);
         bench_insert_loop!(group, count, false, RoaringTwoLevels, u64);
@@ -59,7 +70,7 @@ macro_rules! bench_insert_iter {
 }
 
 fn insert_sorted_iter(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Insert/Sorted/Iter");
+    let mut group = new_benchmark_group!(c, "Insert/Sorted/Iter");
     for count in [1, 10, 100, 1_000, 10_000].iter() {
         bench_insert_iter!(group, count, true, Roaring, u32);
         bench_insert_iter!(group, count, true, RoaringTwoLevels, u64);
@@ -70,7 +81,7 @@ fn insert_sorted_iter(c: &mut Criterion) {
 }
 
 fn insert_random_iter(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Insert/Random/Iter");
+    let mut group = new_benchmark_group!(c, "Insert/Random/Iter");
     for count in [1, 10, 100, 1_000, 10_000].iter() {
         bench_insert_iter!(group, count, false, Roaring, u32);
         bench_insert_iter!(group, count, false, RoaringTwoLevels, u64);
@@ -98,7 +109,7 @@ macro_rules! bench_contains {
 }
 
 fn contains_present(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Contains/Found");
+    let mut group = new_benchmark_group!(c, "Contains/Found");
     for count in [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000].iter() {
         bench_contains!(group, count, true, Roaring, u32);
         bench_contains!(group, count, true, RoaringTwoLevels, u64);
@@ -109,7 +120,7 @@ fn contains_present(c: &mut Criterion) {
 }
 
 fn contains_absent(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Contains/NotFound");
+    let mut group = new_benchmark_group!(c, "Contains/NotFound");
     for count in [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000].iter() {
         bench_contains!(group, count, false, Roaring, u32);
         bench_contains!(group, count, false, RoaringTwoLevels, u64);
@@ -134,7 +145,7 @@ macro_rules! bench_cardinality {
 }
 
 fn cardinality(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Cardinality");
+    let mut group = new_benchmark_group!(c, "Cardinality");
     for count in [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000].iter() {
         bench_cardinality!(group, count, Roaring, u32);
         bench_cardinality!(group, count, RoaringTwoLevels, u64);
@@ -159,7 +170,7 @@ macro_rules! bench_is_empty {
 }
 
 fn is_empty(c: &mut Criterion) {
-    let mut group = c.benchmark_group("IsEmpty");
+    let mut group = new_benchmark_group!(c, "IsEmpty");
     for count in [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000].iter() {
         bench_is_empty!(group, count, Roaring, u32);
         bench_is_empty!(group, count, RoaringTwoLevels, u64);
@@ -187,7 +198,7 @@ macro_rules! bench_remove {
 }
 
 fn remove(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Remove");
+    let mut group = new_benchmark_group!(c, "Remove");
     for count in [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000].iter() {
         bench_remove!(group, count, Roaring, u32);
         bench_remove!(group, count, RoaringTwoLevels, u64);
