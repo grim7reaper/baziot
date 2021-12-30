@@ -4,7 +4,9 @@ use criterion::{
     BenchmarkId, Criterion, PlotConfiguration,
 };
 use rand::{
-    distributions::Standard, prelude::*, seq::SliceRandom, thread_rng, Rng,
+    distributions::{Distribution, Uniform},
+    seq::SliceRandom,
+    thread_rng,
 };
 
 macro_rules! new_benchmark_group {
@@ -211,14 +213,21 @@ fn remove(c: &mut Criterion) {
 /// Returns a list of random value, uniformly distributed and optionally sorted.
 fn get_input_values<I>(count: i32, want_sorted: bool) -> Vec<I>
 where
-    I: Ord,
-    Standard: Distribution<I>,
+    I: Ord + From<u32>,
 {
+    const MAX: u32 = 500_000_000;
+
+    let range = Uniform::from(0..MAX);
+
     let mut prng = thread_rng();
-    let mut values = (0..count).map(|_| prng.gen::<I>()).collect::<Vec<_>>();
+    let mut values = (0..count)
+        .map(|_| range.sample(&mut prng).into())
+        .collect::<Vec<_>>();
+
     if want_sorted {
         values.sort_unstable()
     }
+
     values
 }
 
@@ -228,8 +237,7 @@ where
 fn random_bitmap<R, I>(cardinality: i32) -> (R, I)
 where
     R: FromIterator<I>,
-    I: Ord + Copy,
-    Standard: rand::distributions::Distribution<I>,
+    I: Ord + Copy + From<u32>,
 {
     let values = get_input_values(cardinality, true);
     let value = *values.choose(&mut thread_rng()).expect("non-empty values");
