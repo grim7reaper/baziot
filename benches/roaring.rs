@@ -10,12 +10,7 @@ use rand::{
 macro_rules! bench_insert_loop {
     // Benchmark insertion using a loop, with either sorted or unsorted input.
     ($group:ident, $count:ident, $sorted:literal, $roaring: ty, $int:ty) => {
-        let id = stringify!($roaring);
-        let benchmark_id = if $sorted {
-            BenchmarkId::new(format!("{}/Loop/Sorted", id), $count)
-        } else {
-            BenchmarkId::new(format!("{}/Loop/Random", id), $count)
-        };
+        let benchmark_id = BenchmarkId::new(stringify!($roaring), $count);
         $group.bench_with_input(benchmark_id, $count, |b, &$count| {
             let values: Vec<$int> = get_input_values($count, $sorted);
             b.iter(|| {
@@ -29,19 +24,23 @@ macro_rules! bench_insert_loop {
     };
 }
 
-fn insert_loop(c: &mut Criterion) {
-    let mut group = c.benchmark_group("InsertLoop");
+fn insert_sorted_loop(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Inser/Sorted/Loop");
     for count in [1, 10, 100, 1_000, 10_000].iter() {
         bench_insert_loop!(group, count, true, Roaring, u32);
-        bench_insert_loop!(group, count, false, Roaring, u32);
-
         bench_insert_loop!(group, count, true, RoaringTwoLevels, u64);
-        bench_insert_loop!(group, count, false, RoaringTwoLevels, u64);
-
         bench_insert_loop!(group, count, true, RoaringTreeMap, u64);
-        bench_insert_loop!(group, count, false, RoaringTreeMap, u64);
-
         bench_insert_loop!(group, count, true, RoaringLazy, u64);
+    }
+    group.finish();
+}
+
+fn insert_random_loop(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Insert/Random/Loop");
+    for count in [1, 10, 100, 1_000, 10_000].iter() {
+        bench_insert_loop!(group, count, false, Roaring, u32);
+        bench_insert_loop!(group, count, false, RoaringTwoLevels, u64);
+        bench_insert_loop!(group, count, false, RoaringTreeMap, u64);
         bench_insert_loop!(group, count, false, RoaringLazy, u64);
     }
     group.finish();
@@ -51,12 +50,7 @@ macro_rules! bench_insert_iter {
     // Benchmark insertion using an iterator, with either sorted or unsorted
     // input.
     ($group:ident, $count:ident, $sorted: literal, $roaring: ty, $int:ty) => {
-        let id = stringify!($roaring);
-        let benchmark_id = if $sorted {
-            BenchmarkId::new(format!("{}/Iter/Sorted", id), $count)
-        } else {
-            BenchmarkId::new(format!("{}/Iter/Random", id), $count)
-        };
+        let benchmark_id = BenchmarkId::new(stringify!($roaring), $count);
         $group.bench_with_input(benchmark_id, $count, |b, &$count| {
             let values: Vec<$int> = get_input_values($count, $sorted);
             b.iter(|| values.iter().copied().collect::<$roaring>());
@@ -64,19 +58,23 @@ macro_rules! bench_insert_iter {
     };
 }
 
-fn insert_iter(c: &mut Criterion) {
-    let mut group = c.benchmark_group("InsertIter");
+fn insert_sorted_iter(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Insert/Sorted/Iter");
     for count in [1, 10, 100, 1_000, 10_000].iter() {
         bench_insert_iter!(group, count, true, Roaring, u32);
-        bench_insert_iter!(group, count, false, Roaring, u32);
-
         bench_insert_iter!(group, count, true, RoaringTwoLevels, u64);
-        bench_insert_iter!(group, count, false, RoaringTwoLevels, u64);
-
         bench_insert_iter!(group, count, true, RoaringTreeMap, u64);
-        bench_insert_iter!(group, count, false, RoaringTreeMap, u64);
-
         bench_insert_iter!(group, count, true, RoaringLazy, u64);
+    }
+    group.finish();
+}
+
+fn insert_random_iter(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Insert/Random/Iter");
+    for count in [1, 10, 100, 1_000, 10_000].iter() {
+        bench_insert_iter!(group, count, false, Roaring, u32);
+        bench_insert_iter!(group, count, false, RoaringTwoLevels, u64);
+        bench_insert_iter!(group, count, false, RoaringTreeMap, u64);
         bench_insert_iter!(group, count, false, RoaringLazy, u64);
     }
     group.finish();
@@ -99,19 +97,23 @@ macro_rules! bench_contains {
     };
 }
 
-fn contains(c: &mut Criterion) {
-    let mut group = c.benchmark_group("Contains");
+fn contains_present(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Contains/Found");
     for count in [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000].iter() {
         bench_contains!(group, count, true, Roaring, u32);
-        bench_contains!(group, count, false, Roaring, u32);
-
         bench_contains!(group, count, true, RoaringTwoLevels, u64);
-        bench_contains!(group, count, false, RoaringTwoLevels, u64);
-
         bench_contains!(group, count, true, RoaringTreeMap, u64);
-        bench_contains!(group, count, false, RoaringTreeMap, u64);
-
         bench_contains!(group, count, true, RoaringLazy, u64);
+    }
+    group.finish();
+}
+
+fn contains_absent(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Contains/NotFound");
+    for count in [1, 10, 100, 1_000, 10_000, 100_000, 1_000_000].iter() {
+        bench_contains!(group, count, false, Roaring, u32);
+        bench_contains!(group, count, false, RoaringTwoLevels, u64);
+        bench_contains!(group, count, false, RoaringTreeMap, u64);
         bench_contains!(group, count, false, RoaringLazy, u64);
     }
     group.finish();
@@ -226,9 +228,12 @@ where
 
 criterion_group!(
     benches,
-    insert_loop,
-    insert_iter,
-    contains,
+    insert_sorted_loop,
+    insert_random_loop,
+    insert_sorted_iter,
+    insert_random_iter,
+    contains_present,
+    contains_absent,
     cardinality,
     is_empty,
     remove
